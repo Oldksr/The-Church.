@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const play = require('play-dl');
 require('libsodium-wrappers');
+require('prism-media');
 
 const client = new Client({
     intents: [
@@ -90,8 +91,9 @@ client.on('messageCreate', async message => {
 
         serverQueue.songs = [];
         serverQueue.player.stop();
-        if (serverQueue.connection) {
-            serverQueue.connection.destroy();
+        const connection = getVoiceConnection(message.guild.id);
+        if (connection) {
+            connection.destroy();
         }
         queues.delete(message.guild.id);
         return message.reply('تم توقيف الموسيقى وطلع البوت من الروم');
@@ -122,29 +124,32 @@ client.on('messageCreate', async message => {
         const collector = panel.createMessageComponentCollector({ time: 300000 });
 
         collector.on('collect', async i => {
-            if (!i.member.voice.channel) return i.reply({ content: 'انت مو بنفس الروم', ephemeral: true });
+            if (!i.member.voice.channel) return i.reply({ content: 'انت مو بنفس الروم', flags: 64 });
 
             if (i.customId === 'pause') {
                 serverQueue.player.pause();
-                await i.reply({ content: 'تم ايقاف الاغنية مؤقتا', ephemeral: true });
+                await i.reply({ content: 'تم ايقاف الاغنية مؤقتا', flags: 64 });
             } else if (i.customId === 'resume') {
                 serverQueue.player.unpause();
-                await i.reply({ content: 'تم استئناف الاغنية', ephemeral: true });
+                await i.reply({ content: 'تم استئناف الاغنية', flags: 64 });
             } else if (i.customId === 'skip') {
                 serverQueue.player.stop();
-                await i.reply({ content: 'تم تخطي الاغنية', ephemeral: true });
+                await i.reply({ content: 'تم تخطي الاغنية', flags: 64 });
             } else if (i.customId === 'stop') {
                 serverQueue.songs = [];
                 serverQueue.player.stop();
-                if (serverQueue.connection) serverQueue.connection.destroy();
-                queues.delete(i.guild.ID || i.guild.id);
-                await i.reply({ content: 'تم ايقاف المشغل وطلع البوت من الروم', ephemeral: true });
+                const connection = getVoiceConnection(i.guild.id);
+                if (connection) {
+                    connection.destroy();
+                }
+                queues.delete(i.guild.id);
+                await i.reply({ content: 'تم ايقاف المشغل وطلع البوت من الروم', flags: 64 });
             } else if (i.customId === 'loop') {
                 serverQueue.loop = !serverQueue.loop;
-                await i.reply({ content: `وضع التكرار صار ${serverQueue.loop ? 'مفعل' : 'معطل'}`, ephemeral: true });
+                await i.reply({ content: `وضع التكرار صار ${serverQueue.loop ? 'مفعل' : 'معطل'}`, flags: 64 });
             } else if (i.customId === '247') {
                 serverQueue.twentyFourSeven = !serverQueue.twentyFourSeven;
-                await i.reply({ content: `وضع 24 ساعة صار ${serverQueue.twentyFourSeven ? 'مفعل' : 'معطل'}`, ephemeral: true });
+                await i.reply({ content: `وضع 24 ساعة صار ${serverQueue.twentyFourSeven ? 'مفعل' : 'معطل'}`, flags: 64 });
             }
         });
     }
@@ -155,8 +160,9 @@ async function playSong(guildId, song) {
     if (!song) {
         if (!serverQueue.twentyFourSeven) {
             setTimeout(() => {
-                if (serverQueue.songs.length === 0 && getVoiceConnection(guildId)) {
-                    serverQueue.connection.destroy();
+                const connection = getVoiceConnection(guildId);
+                if (serverQueue.songs.length === 0 && connection) {
+                    connection.destroy();
                     queues.delete(guildId);
                 }
             }, 30000);
@@ -168,7 +174,11 @@ async function playSong(guildId, song) {
         const stream = await play.stream(song.url, { discordPlayerCompatibility: true });
         const resource = createAudioResource(stream.stream, { inputType: stream.type });
         serverQueue.player.play(resource);
-        serverQueue.connection.subscribe(serverQueue.player);
+        
+        const connection = getVoiceConnection(guildId);
+        if (connection) {
+            connection.subscribe(serverQueue.player);
+        }
 
         serverQueue.player.once(AudioPlayerStatus.Idle, () => {
             if (!serverQueue.loop) serverQueue.songs.shift();
