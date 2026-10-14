@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const play = require('play-dl');
+require('libsodium-wrappers');
 
 const client = new Client({
     intents: [
@@ -65,6 +66,7 @@ client.on('messageCreate', async message => {
                         channelId: voiceChannel.id,
                         guildId: message.guild.id,
                         adapterCreator: message.guild.voiceAdapterCreator,
+                        selfDeaf: false
                     });
                     queueConstruct.connection = connection;
                     playSong(message.guild.id, queueConstruct.songs[0]);
@@ -135,7 +137,7 @@ client.on('messageCreate', async message => {
                 serverQueue.songs = [];
                 serverQueue.player.stop();
                 if (serverQueue.connection) serverQueue.connection.destroy();
-                queues.delete(i.guild.id);
+                queues.delete(i.guild.ID || i.guild.id);
                 await i.reply({ content: 'تم ايقاف المشغل وطلع البوت من الروم', ephemeral: true });
             } else if (i.customId === 'loop') {
                 serverQueue.loop = !serverQueue.loop;
@@ -163,7 +165,7 @@ async function playSong(guildId, song) {
     }
 
     try {
-        const stream = await play.stream(song.url);
+        const stream = await play.stream(song.url, { discordPlayerCompatibility: true });
         const resource = createAudioResource(stream.stream, { inputType: stream.type });
         serverQueue.player.play(resource);
         serverQueue.connection.subscribe(serverQueue.player);
