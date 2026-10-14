@@ -82,9 +82,22 @@ client.on('messageCreate', async message => {
         }
     }
 
+    else if (cmd === 'stop' || cmd === 'leave' || cmd === 'توقيف' || cmd === 'وقف') {
+        const serverQueue = queues.get(message.guild.id);
+        if (!serverQueue) return message.reply('اصلاً مافيه شي شغال عشان اوقفه');
+
+        serverQueue.songs = [];
+        serverQueue.player.stop();
+        if (serverQueue.connection) {
+            serverQueue.connection.destroy();
+        }
+        queues.delete(message.guild.id);
+        return message.reply('تم توقيف الموسيقى وطلع البوت من الروم');
+    }
+
     else if (cmd === 'panel') {
         const serverQueue = queues.get(message.guild.id);
-        if (!serverQueue) return message.reply('مافيه شي شغاله حاليا');
+        if (!serverQueue) return message.reply('مافيه شي شغال حاليا');
 
         const embed = new EmbedBuilder()
             .setTitle('لوحة التحكم الصوتية')
@@ -95,7 +108,7 @@ client.on('messageCreate', async message => {
             new ButtonBuilder().setCustomId('pause').setLabel('ايقاف مؤقت').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('resume').setLabel('استئناف').setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId('skip').setLabel('تخطي').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('stop').setLabel('ايقاف').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('stop').setLabel('توقيف كامل').setStyle(ButtonStyle.Secondary)
         );
 
         const row2 = new ActionRowBuilder().addComponents(
@@ -121,7 +134,9 @@ client.on('messageCreate', async message => {
             } else if (i.customId === 'stop') {
                 serverQueue.songs = [];
                 serverQueue.player.stop();
-                await i.reply({ content: 'تم ايقاف المشغل ونظيف القائمة', ephemeral: true });
+                if (serverQueue.connection) serverQueue.connection.destroy();
+                queues.delete(i.guild.id);
+                await i.reply({ content: 'تم ايقاف المشغل وطلع البوت من الروم', ephemeral: true });
             } else if (i.customId === 'loop') {
                 serverQueue.loop = !serverQueue.loop;
                 await i.reply({ content: `وضع التكرار صار ${serverQueue.loop ? 'مفعل' : 'معطل'}`, ephemeral: true });
@@ -164,3 +179,4 @@ async function playSong(guildId, song) {
 }
 
 client.login(process.env.TOKEN);
+ 
