@@ -18,7 +18,7 @@ const TARGET_VOICE_CHANNEL_ID = '1559549205343768666';
 
 client.once('ready', async () => {
     console.log('sh8al el bot tamam');
-    
+
     for (const guild of client.guilds.cache.values()) {
         try {
             const channel = await guild.channels.fetch(TARGET_VOICE_CHANNEL_ID).catch(() => null);
@@ -53,17 +53,20 @@ client.on('messageCreate', async message => {
         const voiceChannel = message.member.voice.channel;
         if (!voiceChannel) return message.reply('لازم تدخل روم صوتي عشان تقدر تشغل الموسيقى');
 
+        if (voiceChannel.id !== TARGET_VOICE_CHANNEL_ID) {
+            return message.reply('البوت مثبت في روم مخصص، لازم تدخل معه بنفس الروم عشان تشغل اغنية');
+        }
+
         const query = args.join(' ');
         if (!query) return message.reply('اكتب اسم الاغنية او الرابط يطيب');
 
         let serverQueue = queues.get(message.guild.id);
 
         try {
-            let songInfo;
             const searched = await play.search(query, { limit: 1 });
             if (!searched.length) return message.reply('ما حصلت شي بهذا الاسم');
-            
-            songInfo = { 
+
+            const songInfo = { 
                 title: searched[0].title, 
                 url: searched[0].url 
             };
@@ -141,7 +144,9 @@ client.on('messageCreate', async message => {
         const collector = panel.createMessageComponentCollector({ time: 300000 });
 
         collector.on('collect', async i => {
-            if (!i.member.voice.channel) return i.reply({ content: 'لازم تكون بنفس الروم عشان تستخدم الازرار', flags: 64 });
+            if (!i.member.voice.channel || i.member.voice.channel.id !== TARGET_VOICE_CHANNEL_ID) {
+                return i.reply({ content: 'لازم تكون بنفس روم البوت عشان تستخدم الازرار', flags: 64 });
+            }
 
             if (i.customId === 'pause') {
                 serverQueue.player.pause();
@@ -170,10 +175,15 @@ async function playSong(guildId, song) {
     if (!song) return;
 
     try {
-        const streamData = await play.stream(song.url);
-        const resource = createAudioResource(streamData.stream, { inputType: streamData.type });
+        const streamData = await play.stream(song.url, { discordPlayerCompatibility: true });
+        const resource = createAudioResource(streamData.stream, { 
+            inputType: streamData.type,
+            inlineVolume: true 
+        });
+
+        resource.volume.setVolume(1.0);
         serverQueue.player.play(resource);
-        
+
         let connection = getVoiceConnection(guildId);
         if (connection) {
             connection.subscribe(serverQueue.player);
