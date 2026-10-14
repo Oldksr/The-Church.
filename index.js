@@ -163,4 +163,4 @@ async function playSong(guildId, song) {
     }
 }
 
-client.login(process.env.TOKEN);
+client.login(MTU2MDAZOTA2MDKZNDG4OTUXMW.G-1ACH.NNXUQMZ7D5W3ULSYUTRZAM2LR1V862EZLL149Y);
