@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { DisTube } = require('distube');
 const { YtDlpPlugin } = require('@distube/yt-dlp');
+const { SpotifyPlugin } = require('@distube/spotify');
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 require('libsodium-wrappers');
 
@@ -18,7 +19,13 @@ const distube = new DisTube(client, {
     leaveOnStop: false,
     leaveOnFinish: false,
     leaveOnEmpty: false,
-    plugins: [new YtDlpPlugin()]
+    nsfw: true,
+    plugins: [
+        new YtDlpPlugin(),
+        new SpotifyPlugin({
+            emitEventsAfterFetching: true
+        })
+    ]
 });
 
 const TARGET_VOICE_CHANNEL_ID = '1559549205343768666';
@@ -38,26 +45,22 @@ client.once('ready', async () => {
                         adapterCreator: guild.voiceAdapterCreator,
                         selfDeaf: false
                     });
-                    console.log(`تم تثبيت البوت في الروم الصوتي للسيرفر: ${guild.name}`);
                 }
             }
-        } catch (err) {
-            console.log('خطأ في الانضمام التلقائي للروم');
-        }
+        } catch (err) {}
     }
 });
 
 distube.on('playSong', (queue, song) => {
-    queue.textChannel?.send(`🎶 | تم البدء بتشغيل: **${song.name}**`);
+    queue.textChannel?.send(`تم تشغيل ${song.name}`);
 });
 
 distube.on('addSong', (queue, song) => {
-    queue.textChannel?.send(`✅ | تمت اضافة للقائمة: **${song.name}**`);
+    queue.textChannel?.send(`تمت اضافة ${song.name} للطابور`);
 });
 
 distube.on('error', (channel, error) => {
-    console.error(error);
-    if (channel) channel.send('صار خطأ أثناء تشغيل الصوت').catch(() => {});
+    if (channel) channel.send('صار خطا في تشغيل الصوت').catch(() => {});
 });
 
 client.on('messageCreate', async message => {
@@ -71,34 +74,34 @@ client.on('messageCreate', async message => {
 
     if (cmd === 'play') {
         const voiceChannel = message.member.voice.channel;
-        if (!voiceChannel) return message.reply('لازم تدخل روم صوتي عشان تقدر تشغل الموسيقى');
+        if (!voiceChannel) return message.reply('ادخل الفويس اول يطيب');
         
         if (voiceChannel.id !== TARGET_VOICE_CHANNEL_ID) {
-            return message.reply('البوت مثبت في روم مخصص، لازم تدخل معه بنفس الروم عشان تشغل اغنية');
+            return message.reply('البوت مثبت بروم ثاني ادخل معه');
         }
 
-        const query = args.join(' ');
-        if (!query) return message.reply('اكتب اسم الاغنية او الرابط يطيب');
+        let query = args.join(' ');
+        if (!query) return message.reply('حط رابط او اسم اغنية');
 
         try {
             await distube.play(voiceChannel, query, {
                 textChannel: message.channel,
-                member: message.member
+                member: message.member,
+                skip: false
             });
         } catch (error) {
-            console.error(error);
-            return message.reply('ما قدرت أشغل الأغنية، تأكد من الرابط أو الاسم');
+            return message.reply('ما قدرت اشغل الطلب تاكد من الرابط');
         }
     }
 
     else if (cmd === 'stop' || cmd === 'توقيف' || cmd === 'وقف') {
         try {
             const queue = distube.getQueue(message.guild.id);
-            if (!queue) return message.reply('اصلاً مافيه شي شغال عشان اوقفه');
+            if (!queue) return message.reply('اصلا مافيه شي شغال');
             await distube.stop(message.guild.id);
-            return message.reply('تم توقيف الموسيقى الحالية وبقي البوت ثابت بالروم');
+            return message.reply('تم توقيف الموسيقى والبوت ثابت برومه');
         } catch (e) {
-            return message.reply('ما فيه شي شغال حالياً');
+            return message.reply('مافيه شي شغال حاليا');
         }
     }
 
@@ -127,7 +130,7 @@ client.on('messageCreate', async message => {
 
         collector.on('collect', async i => {
             if (!i.member.voice.channel || i.member.voice.channel.id !== TARGET_VOICE_CHANNEL_ID) {
-                return i.reply({ content: 'لازم تكون بنفس روم البوت عشان تستخدم الازرار', flags: 64 });
+                return i.reply({ content: 'لازم تكون بنفس روم البوت', flags: 64 });
             }
 
             const currentQueue = distube.getQueue(i.guild.id);
@@ -143,14 +146,14 @@ client.on('messageCreate', async message => {
                     if (currentQueue) await currentQueue.skip();
                     await i.reply({ content: 'تم تخطي الاغنية', flags: 64 });
                 } catch (err) {
-                    await i.reply({ content: 'ما فيه أغاني تانية بالتصفية', flags: 64 });
+                    await i.reply({ content: 'مافيه اغاني بعدها', flags: 64 });
                 }
             } else if (i.customId === 'stop') {
                 if (currentQueue) await distube.stop(i.guild.id);
-                await i.reply({ content: 'تم توقيف الأغنية وبقي البوت ثابت بالروم', flags: 64 });
+                await i.reply({ content: 'تم توقيف الاغنية وبقي البوت ثابت', flags: 64 });
             } else if (i.customId === 'loop') {
                 const mode = currentQueue ? currentQueue.toggleRepeatMode() : 0;
-                await i.reply({ content: `وضع التكرار صار ${mode ? 'مفعل' : 'معطل'}`, flags: 64 });
+                await i.reply({ content: `وضع التكرار صار ${mode ? 'شغال' : 'مطفي'}`, flags: 64 });
             }
         });
     }
