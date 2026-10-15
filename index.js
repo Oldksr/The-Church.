@@ -19,12 +19,9 @@ const distube = new DisTube(client, {
     leaveOnStop: false,
     leaveOnFinish: false,
     leaveOnEmpty: false,
-    nsfw: true,
     plugins: [
         new YtDlpPlugin(),
-        new SpotifyPlugin({
-            emitEventsAfterFetching: true
-        })
+        new SpotifyPlugin()
     ]
 });
 
@@ -160,3 +157,4 @@ client.on('messageCreate', async message => {
 });
 
 client.login(process.env.TOKEN);
+ 
