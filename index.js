@@ -1,6 +1,5 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { DisTube } = require('distube');
-const { YtDlpPlugin } = require('@distube/yt-dlp');
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 require('libsodium-wrappers');
 
@@ -17,10 +16,7 @@ const distube = new DisTube(client, {
     emitNewSongOnly: true,
     leaveOnStop: false,
     leaveOnFinish: false,
-    leaveOnEmpty: false,
-    plugins: [
-        new YtDlpPlugin()
-    ]
+    leaveOnEmpty: false
 });
 
 const TARGET_VOICE_CHANNEL_ID = '1559549205343768666';
@@ -155,4 +151,3 @@ client.on('messageCreate', async message => {
 });
 
 client.login(process.env.TOKEN);
- 
