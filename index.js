@@ -1,7 +1,6 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { DisTube } = require('distube');
 const { YtDlpPlugin } = require('@distube/yt-dlp');
-const { SpotifyPlugin } = require('@distube/spotify');
 const { joinVoiceChannel, getVoiceConnection } = require('@discordjs/voice');
 require('libsodium-wrappers');
 
@@ -20,8 +19,7 @@ const distube = new DisTube(client, {
     leaveOnFinish: false,
     leaveOnEmpty: false,
     plugins: [
-        new YtDlpPlugin(),
-        new SpotifyPlugin()
+        new YtDlpPlugin()
     ]
 });
 
